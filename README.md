@@ -14,10 +14,10 @@
 
 ### ✨ 核心功能
 
-- **🤖 大模型识别**：使用 Gemini/GPT/Ollama 等大模型智能提取发票信息
+- **🤖 大模型识别**：使用 Gemini/DeepSeek/GPT/Ollama 等大模型智能提取发票信息
 - **🔀 混合提取模式**：LLM + 正则验证，兼顾准确性和可靠性
 - **👁️ 多模态视觉识别**：直接从发票图片识别，无需 OCR 预处理
-- **🔌 多模型支持**：支持 Gemini、OpenAI、Ollama 本地/远程模型
+- **🔌 多模型支持**：支持 Gemini、DeepSeek（国内推荐）、OpenAI、Ollama 本地/远程模型
 - **� 智能分类**：自动按 `销售方/购买方` 创建文件夹结构整理发票
 - **�📊 Excel 报告**：自动生成发票汇总 Excel 表格
 - **⚡ 多线程处理**：支持并行处理，大幅提升效率
@@ -48,8 +48,8 @@ cd invoice-manager-v2
 pip install pdfplumber pillow openpyxl
 
 # LLM 依赖（选择一个）
-pip install google-generativeai  # Gemini（推荐）
-pip install openai               # OpenAI
+pip install google-generativeai  # Gemini
+pip install openai               # OpenAI / DeepSeek（国内推荐）
 # Ollama 无需 pip 安装，直接运行 ollama serve
 ```
 
@@ -70,10 +70,17 @@ export GEMINI_API_KEY=your_api_key
 copy .env.example .env
 
 # 编辑 .env 文件，填入 API Key
+# 推荐使用 Gemini
 GEMINI_API_KEY=your_api_key
 ```
 
-**使用 Ollama（本地/远程）**
+**使用 DeepSeek**（国内推荐）
+```bash
+# 在 .env 中配置
+DEEPSEEK_API_KEY=your_deepseek_api_key
+```
+
+**使用 Ollama**（本地/远程）
 ```bash
 # 本地运行
 ollama serve
@@ -105,7 +112,7 @@ python main.py --test
 ### 图形界面
 
 1. 运行 `python gui.py` 启动界面
-2. 选择 **LLM 提供商**（Gemini/OpenAI/Ollama）
+2. 选择 **LLM 提供商**（Gemini/DeepSeek/OpenAI/Ollama）
 3. 选择 **提取模式**（推荐 hybrid 混合模式）
 4. 选择 **发票文件夹** 和 **输出文件夹**
 5. 可选配置：多线程、断点续传、批处理大小
@@ -176,6 +183,7 @@ result = process_invoices(
 
 | 提供商 | 推荐模型 | 特点 | 费用 |
 |--------|----------|------|------|
+| `deepseek` | deepseek-chat | **国内推荐**、快速、中文优秀 | 按量计费（很便宜） |
 | `gemini` | gemini-2.5-flash | 快速、免费配额、中文好 | 有免费额度 |
 | `openai` | gpt-4o-mini | 效果稳定、支持广 | 按量计费 |
 | `ollama` | qwen2.5:7b | 离线运行、隐私安全 | **完全免费** |
@@ -185,15 +193,19 @@ result = process_invoices(
 ```bash
 # API Keys
 GEMINI_API_KEY=your_gemini_key
+DEEPSEEK_API_KEY=your_deepseek_key
 OPENAI_API_KEY=your_openai_key
+
+# DeepSeek 配置
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # Ollama 配置
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b
 
 # 默认配置
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-2.5-flash
+LLM_PROVIDER=deepseek  # gemini / deepseek / openai / ollama
+LLM_MODEL=deepseek-chat
 EXTRACTION_MODE=hybrid
 ```
 
@@ -219,6 +231,7 @@ EXTRACTION_MODE=hybrid
 │   ├── llm/                # LLM 适配器
 │   │   ├── base_adapter.py # 适配器基类
 │   │   ├── gemini_adapter.py
+│   │   ├── deepseek_adapter.py  # 国内推荐
 │   │   ├── openai_adapter.py
 │   │   ├── ollama_adapter.py
 │   │   └── factory.py      # 模型工厂
@@ -296,6 +309,7 @@ A:
 
 ### V2.1 (2025-12)
 
+- 🇨🇳 **新增 DeepSeek API 支持**（国内推荐）
 - 🌐 新增远程 Ollama 服务器支持
 - ⚡ 新增多线程并行处理
 - 💾 新增断点续传功能

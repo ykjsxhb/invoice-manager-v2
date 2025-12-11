@@ -93,7 +93,7 @@ def check_llm_availability():
     
     from core.llm import LLMFactory
     
-    providers = ["gemini", "openai", "ollama"]
+    providers = ["gemini", "deepseek", "openai", "ollama"]
     
     for provider in providers:
         try:

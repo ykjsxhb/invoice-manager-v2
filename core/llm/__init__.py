@@ -9,6 +9,7 @@ from .base_adapter import BaseLLMAdapter
 from .gemini_adapter import GeminiAdapter
 from .ollama_adapter import OllamaAdapter
 from .openai_adapter import OpenAIAdapter
+from .deepseek_adapter import DeepSeekAdapter
 from .factory import LLMFactory, get_llm
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "GeminiAdapter",
     "OllamaAdapter", 
     "OpenAIAdapter",
+    "DeepSeekAdapter",
     "LLMFactory",
     "get_llm",
 ]

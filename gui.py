@@ -98,7 +98,7 @@ class InvoiceGUI:
         self.provider_combo = ttk.Combobox(
             config_row, 
             textvariable=self.llm_provider,
-            values=["gemini", "openai", "ollama"],
+            values=["gemini", "deepseek", "openai", "ollama"],
             state="readonly",
             width=10
         )
@@ -277,6 +277,14 @@ class InvoiceGUI:
         
         if provider == "gemini":
             models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"]
+            self.model_combo['values'] = models
+            self.llm_model.set(models[0])
+            self.model_combo['state'] = 'readonly'
+            # 隐藏Ollama配置
+            self.ollama_config_frame.pack_forget()
+        elif provider == "deepseek":
+            # DeepSeek 模型列表
+            models = ["deepseek-chat", "deepseek-reasoner"]
             self.model_combo['values'] = models
             self.llm_model.set(models[0])
             self.model_combo['state'] = 'readonly'

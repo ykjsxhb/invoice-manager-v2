@@ -12,6 +12,7 @@ from .base_adapter import BaseLLMAdapter
 from .gemini_adapter import GeminiAdapter
 from .ollama_adapter import OllamaAdapter
 from .openai_adapter import OpenAIAdapter
+from .deepseek_adapter import DeepSeekAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class LLMFactory:
         "gemini": GeminiAdapter,
         "openai": OpenAIAdapter,
         "ollama": OllamaAdapter,
+        "deepseek": DeepSeekAdapter,
     }
     
     @classmethod
@@ -55,6 +57,7 @@ class LLMFactory:
             "gemini": "gemini-2.5-flash",
             "openai": "gpt-4o-mini",
             "ollama": "qwen2.5:7b",
+            "deepseek": "deepseek-chat",
         }
         
         # 如果model_name为None或空字符串，使用默认值
@@ -79,7 +82,9 @@ class LLMFactory:
             GEMINI_API_KEY,
             OPENAI_API_KEY,
             OLLAMA_BASE_URL,
-            OLLAMA_MODEL
+            OLLAMA_MODEL,
+            DEEPSEEK_API_KEY,
+            DEEPSEEK_BASE_URL
         )
         
         if LLM_PROVIDER == "gemini":
@@ -89,6 +94,8 @@ class LLMFactory:
         elif LLM_PROVIDER == "ollama":
             model = LLM_MODEL if LLM_MODEL else OLLAMA_MODEL
             return cls.create("ollama", model, base_url=OLLAMA_BASE_URL)
+        elif LLM_PROVIDER == "deepseek":
+            return cls.create("deepseek", LLM_MODEL, api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
         else:
             raise ValueError(f"未知的LLM提供商: {LLM_PROVIDER}")
     

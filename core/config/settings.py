@@ -58,6 +58,7 @@ LLM_MODEL: str = os.environ.get("LLM_MODEL", "gemini-2.5-flash")
 # API Keys
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
+DEEPSEEK_API_KEY: str = os.environ.get("DEEPSEEK_API_KEY", "")
 
 # API超时设置（秒）
 LLM_TIMEOUT: int = 30
@@ -71,6 +72,12 @@ LLM_MAX_RETRIES: int = 3
 
 OLLAMA_BASE_URL: str = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL: str = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+
+# ===========================================
+# DeepSeek 配置
+# ===========================================
+
+DEEPSEEK_BASE_URL: str = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 # ===========================================
 # 提取模式配置
