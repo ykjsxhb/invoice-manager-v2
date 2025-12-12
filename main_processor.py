@@ -32,7 +32,9 @@ class InvoiceProcessor:
         extraction_mode: str = None, 
         llm_provider: str = None, 
         llm_model: str = None,
-        ollama_base_url: str = None
+        ollama_base_url: str = None,
+        ollama_text_model: str = None,
+        ollama_vision_model: str = None
     ):
         """
         初始化发票处理器
@@ -42,27 +44,48 @@ class InvoiceProcessor:
             llm_provider: LLM提供商 (gemini/openai/ollama)
             llm_model: 模型名称 (可选，为空时使用默认值)
             ollama_base_url: Ollama服务器地址 (可选)
+            ollama_text_model: Ollama文本模型 (可选，用于PDF/OFD/XML)
+            ollama_vision_model: Ollama图片模型 (可选，用于图片文件)
         """
         self.extraction_mode = extraction_mode or EXTRACTION_MODE
         
         # 初始化LLM适配器
         try:
             if llm_provider:
-                # 传递额外参数给Ollama适配器
                 extra_kwargs = {}
                 if llm_provider == "ollama" and ollama_base_url:
                     extra_kwargs['base_url'] = ollama_base_url
-                self.adapter = get_llm(provider=llm_provider, model_name=llm_model, **extra_kwargs)
+                
+                if llm_provider == "ollama" and ollama_text_model and ollama_vision_model:
+                    # Ollama 双模型模式
+                    self.text_adapter = get_llm(provider=llm_provider, model_name=ollama_text_model, **extra_kwargs)
+                    self.vision_adapter = get_llm(provider=llm_provider, model_name=ollama_vision_model, **extra_kwargs)
+                    self.adapter = self.text_adapter  # 默认使用文本适配器
+                    logger.info(f"Ollama双模型模式: 文本={ollama_text_model}, 图片={ollama_vision_model}")
+                else:
+                    # 单模型模式（云端API或Ollama老配置）
+                    self.adapter = get_llm(provider=llm_provider, model_name=llm_model, **extra_kwargs)
+                    self.text_adapter = self.adapter
+                    self.vision_adapter = self.adapter
+                    logger.info(f"LLM适配器初始化成功: {self.adapter.model_name}")
             else:
                 self.adapter = get_llm()
-            logger.info(f"LLM适配器初始化成功: {self.adapter.model_name}")
+                self.text_adapter = self.adapter
+                self.vision_adapter = self.adapter
+                logger.info(f"LLM适配器初始化成功: {self.adapter.model_name}")
         except Exception as e:
-            logger.warning(f"LLM适配器初始化失败，使用正则兜底模式: {e}")
+            logger.warning(f"LLM适配器初始化失败，使用正则兗底模式: {e}")
             self.adapter = None
+            self.text_adapter = None
+            self.vision_adapter = None
             self.extraction_mode = "regex_fallback"
         
-        # 初始化提取器
-        self.extractor = get_extractor(self.extraction_mode, self.adapter)
+        # 初始化提取器（传递双适配器）
+        self.extractor = get_extractor(
+            self.extraction_mode, 
+            text_adapter=self.text_adapter,
+            vision_adapter=self.vision_adapter
+        )
         logger.info(f"提取器初始化完成，模式: {self.extraction_mode}")
     
     # 预过滤配置
@@ -290,6 +313,8 @@ def process_invoices(
     classify_files: bool = True,
     max_workers: int = 1,
     ollama_base_url: str = None,
+    ollama_text_model: str = None,
+    ollama_vision_model: str = None,
     batch_size: int = 10,
     resume: bool = False,
     progress_callback: callable = None,
@@ -308,6 +333,8 @@ def process_invoices(
         classify_files: 是否按销方分类复制文件
         max_workers: 最大并行线程数（默认1，即单线程）
         ollama_base_url: Ollama服务器地址（可选）
+        ollama_text_model: Ollama文本模型（可选，用于PDF/OFD/XML）
+        ollama_vision_model: Ollama图片模型（可选，用于图片文件）
         batch_size: 批处理大小，每处理N个文件后写入Excel（默认10）
         resume: 是否继续上次未完成的进度（默认False）
         progress_callback: 进度回调函数 callback(current, total, message)
@@ -334,8 +361,15 @@ def process_invoices(
     # 初始化进度管理器
     progress_mgr = ProgressManager(output_folder)
     
-    # 创建处理器
-    processor = InvoiceProcessor(extraction_mode, llm_provider, llm_model, ollama_base_url)
+    # 创建处理器（传递双模型参数）
+    processor = InvoiceProcessor(
+        extraction_mode, 
+        llm_provider, 
+        llm_model, 
+        ollama_base_url,
+        ollama_text_model,
+        ollama_vision_model
+    )
     
     # 收集所有文件
     folder = Path(source_folder)

@@ -21,14 +21,23 @@ logger = logging.getLogger(__name__)
 class LLMInvoiceExtractor(BaseExtractor):
     """LLM发票信息提取器"""
     
-    def __init__(self, adapter: Optional[BaseLLMAdapter] = None):
+    def __init__(
+        self, 
+        text_adapter: Optional[BaseLLMAdapter] = None,
+        vision_adapter: Optional[BaseLLMAdapter] = None
+    ):
         """
         初始化LLM提取器
         
         Args:
-            adapter: LLM适配器实例，为None时从配置创建
+            text_adapter: 文本LLM适配器（用于PDF/OFD/XML文本提取）
+            vision_adapter: 视觉LLM适配器（用于图片识别）
         """
-        self.adapter = adapter or get_llm()
+        # 兼容旧接口
+        self.text_adapter = text_adapter or get_llm()
+        self.vision_adapter = vision_adapter or self.text_adapter
+        # 保留 adapter 属性用于兼容
+        self.adapter = self.text_adapter
     
     def extract(self, text: str, file_path: Optional[str] = None) -> InvoiceInfo:
         """
@@ -47,8 +56,8 @@ class LLMInvoiceExtractor(BaseExtractor):
         prompt = build_extraction_prompt(text)
         
         try:
-            # 调用LLM
-            response = self.adapter.generate(prompt, temperature=0.1)
+            # 调用LLM（使用文本适配器）
+            response = self.text_adapter.generate(prompt, temperature=0.1)
             
             # 解析响应
             info = self._parse_response(response)
@@ -79,8 +88,8 @@ class LLMInvoiceExtractor(BaseExtractor):
         prompt = build_vision_prompt()
         
         try:
-            # 调用多模态API
-            response = self.adapter.generate_with_image(prompt, image_path, temperature=0.1)
+            # 调用多模态API（使用视觉适配器）
+            response = self.vision_adapter.generate_with_image(prompt, image_path, temperature=0.1)
             
             # 解析响应
             info = self._parse_response(response)

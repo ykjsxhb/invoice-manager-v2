@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
 class VisionExtractor(BaseExtractor):
     """视觉提取器：直接从图片识别发票信息"""
     
-    def __init__(self, adapter: Optional[BaseLLMAdapter] = None):
+    def __init__(self, vision_adapter: Optional[BaseLLMAdapter] = None):
         """
         初始化视觉提取器
         
         Args:
-            adapter: LLM适配器实例（需支持多模态）
+            vision_adapter: 视觉LLM适配器（需支持多模态）
         """
-        self.adapter = adapter or get_llm()
-        self._llm_extractor = LLMInvoiceExtractor(self.adapter)
+        self.adapter = vision_adapter or get_llm()
+        self._llm_extractor = LLMInvoiceExtractor(self.adapter, self.adapter)
     
     def extract(self, text: str, file_path: Optional[str] = None) -> InvoiceInfo:
         """

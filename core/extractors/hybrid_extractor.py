@@ -19,14 +19,19 @@ logger = logging.getLogger(__name__)
 class HybridExtractor(BaseExtractor):
     """混合提取器：LLM + 正则验证/兜底"""
     
-    def __init__(self, adapter: Optional[BaseLLMAdapter] = None):
+    def __init__(
+        self, 
+        text_adapter: Optional[BaseLLMAdapter] = None,
+        vision_adapter: Optional[BaseLLMAdapter] = None
+    ):
         """
         初始化混合提取器
         
         Args:
-            adapter: LLM适配器实例
+            text_adapter: 文本LLM适配器（用于PDF/OFD/XML文本提取）
+            vision_adapter: 视觉LLM适配器（用于图片识别）
         """
-        self.llm_extractor = LLMInvoiceExtractor(adapter)
+        self.llm_extractor = LLMInvoiceExtractor(text_adapter, vision_adapter)
         
         # 预编译正则表达式
         self._patterns = {

@@ -35,6 +35,9 @@ class InvoiceGUI:
         self.thread_count = tk.StringVar(value="4")
         self.ollama_server = tk.StringVar(value="本机")
         self.ollama_custom_url = tk.StringVar(value="http://192.168.1.3:11434")
+        # Ollama 双模型配置
+        self.ollama_text_model = tk.StringVar(value="")
+        self.ollama_vision_model = tk.StringVar(value="")
         self.resume_progress = tk.BooleanVar(value=False)
         self.batch_size = tk.StringVar(value="10")
         self.processing = False
@@ -209,6 +212,45 @@ class InvoiceGUI:
         )
         self.custom_url_entry.pack(side=tk.LEFT, padx=5)
         
+        # 第四行：Ollama双模型选择（文本模型 + 图片模型）
+        self.ollama_model_frame = ttk.Frame(config_frame)
+        # 初始不显示
+        
+        ttk.Label(self.ollama_model_frame, text="文本模型:").pack(side=tk.LEFT)
+        self.text_model_combo = ttk.Combobox(
+            self.ollama_model_frame,
+            textvariable=self.ollama_text_model,
+            values=[],
+            width=18
+        )
+        self.text_model_combo.pack(side=tk.LEFT, padx=(5, 15))
+        
+        ttk.Label(self.ollama_model_frame, text="图片模型:").pack(side=tk.LEFT)
+        self.vision_model_combo = ttk.Combobox(
+            self.ollama_model_frame,
+            textvariable=self.ollama_vision_model,
+            values=[],
+            width=18
+        )
+        self.vision_model_combo.pack(side=tk.LEFT, padx=5)
+        
+        # 刷新按钮
+        ttk.Button(
+            self.ollama_model_frame, 
+            text="刷新模型", 
+            command=self._refresh_ollama_models,
+            width=10
+        ).pack(side=tk.LEFT, padx=(10, 0))
+        
+        # 多模态模型提示
+        vision_hint = ttk.Label(
+            self.ollama_model_frame,
+            text="(图片需多模态模型如llava)",
+            font=("微软雅黑", 8),
+            foreground="gray"
+        )
+        vision_hint.pack(side=tk.LEFT, padx=(10, 0))
+        
         # ===== 操作按钮 =====
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=10)
@@ -282,6 +324,7 @@ class InvoiceGUI:
             self.model_combo['state'] = 'readonly'
             # 隐藏Ollama配置
             self.ollama_config_frame.pack_forget()
+            self.ollama_model_frame.pack_forget()
         elif provider == "deepseek":
             # DeepSeek 模型列表
             models = ["deepseek-chat", "deepseek-reasoner"]
@@ -290,6 +333,7 @@ class InvoiceGUI:
             self.model_combo['state'] = 'readonly'
             # 隐藏Ollama配置
             self.ollama_config_frame.pack_forget()
+            self.ollama_model_frame.pack_forget()
         elif provider == "openai":
             models = ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
             self.model_combo['values'] = models
@@ -297,21 +341,31 @@ class InvoiceGUI:
             self.model_combo['state'] = 'readonly'
             # 隐藏Ollama配置
             self.ollama_config_frame.pack_forget()
+            self.ollama_model_frame.pack_forget()
         elif provider == "ollama":
-            # 显示Ollama配置
+            # 显示Ollama配置（服务器 + 双模型选择）
             self.ollama_config_frame.pack(fill=tk.X, pady=(5, 0))
-            # Ollama需要动态获取
-            self._refresh_models()
-            self.model_combo['state'] = 'normal'  # 允许手动输入
+            self.ollama_model_frame.pack(fill=tk.X, pady=(5, 0))
+            # 隐藏单模型选择（对Ollama使用双模型选择）
+            self.model_combo['state'] = 'disabled'
+            self.llm_model.set("（使用下方双模型）")
+            # 刷新双模型列表
+            self._refresh_ollama_models()
     
     def _refresh_models(self):
-        """刷新Ollama模型列表"""
+        """刷新模型列表（云端API用）"""
         provider = self.llm_provider.get()
         
-        if provider != "ollama":
-            self._on_provider_change()
+        if provider == "ollama":
+            # Ollama使用专门的双模型刷新
+            self._refresh_ollama_models()
             return
         
+        # 其他提供商直接触发provider change
+        self._on_provider_change()
+    
+    def _refresh_ollama_models(self):
+        """刷新Ollama双模型列表"""
         base_url = self._get_ollama_url()
         self._log(f"正在获取Ollama模型列表 ({base_url})...")
         
@@ -321,18 +375,39 @@ class InvoiceGUI:
             models = adapter.list_models()
             
             if models:
-                self.model_combo['values'] = models
-                if not self.llm_model.get() or self.llm_model.get() not in models:
-                    self.llm_model.set(models[0])
-                self._log(f"找到 {len(models)} 个Ollama模型: {', '.join(models[:5])}...")
+                # 更新文本模型下拉框
+                self.text_model_combo['values'] = models
+                if not self.ollama_text_model.get() or self.ollama_text_model.get() not in models:
+                    # 优先选择 qwen 系列作为文本模型
+                    text_default = next((m for m in models if 'qwen' in m.lower()), models[0])
+                    self.ollama_text_model.set(text_default)
+                
+                # 更新图片模型下拉框
+                self.vision_model_combo['values'] = models
+                if not self.ollama_vision_model.get() or self.ollama_vision_model.get() not in models:
+                    # 优先选择多模态模型（llava/bakllava/minicpm-v等）作为图片模型
+                    vision_keywords = ['llava', 'bakllava', 'minicpm', 'gemma3']
+                    vision_default = next(
+                        (m for m in models if any(k in m.lower() for k in vision_keywords)), 
+                        models[0]
+                    )
+                    self.ollama_vision_model.set(vision_default)
+                
+                self._log(f"找到 {len(models)} 个Ollama模型: {', '.join(models[:5])}{'...' if len(models) > 5 else ''}")
             else:
-                self.model_combo['values'] = ["qwen2.5:7b"]
-                self.llm_model.set("qwen2.5:7b")
+                default_models = ["qwen2.5:7b", "llava:7b"]
+                self.text_model_combo['values'] = default_models
+                self.vision_model_combo['values'] = default_models
+                self.ollama_text_model.set("qwen2.5:7b")
+                self.ollama_vision_model.set("llava:7b")
                 self._log("未找到Ollama模型，请确保Ollama服务已启动")
         except Exception as e:
             self._log(f"获取模型列表失败: {e}")
-            self.model_combo['values'] = ["qwen2.5:7b"]
-            self.llm_model.set("qwen2.5:7b")
+            default_models = ["qwen2.5:7b", "llava:7b"]
+            self.text_model_combo['values'] = default_models
+            self.vision_model_combo['values'] = default_models
+            self.ollama_text_model.set("qwen2.5:7b")
+            self.ollama_vision_model.set("llava:7b")
     
     def _get_ollama_url(self) -> str:
         """获取当前配置的Ollama服务器URL"""
@@ -350,7 +425,7 @@ class InvoiceGUI:
             self.custom_url_entry.config(state="disabled")
             self._log("已切换到本机服务器")
         # 刷新模型列表
-        self._refresh_models()
+        self._refresh_ollama_models()
     
     def _toggle_multithread(self):
         """切换多线程开关"""
@@ -414,14 +489,21 @@ class InvoiceGUI:
             self._log(f"开始处理: {source}")
             self._log(f"输出文件夹: {output}")
             self._log(f"LLM提供商: {provider}")
-            self._log(f"模型: {model}")
             self._log(f"提取模式: {self.extraction_mode.get()}")
             
-            # Ollama服务器设置
+            # Ollama服务器设置和双模型配置
             ollama_url = None
+            ollama_text_model = None
+            ollama_vision_model = None
             if provider == "ollama":
                 ollama_url = self._get_ollama_url()
+                ollama_text_model = self.ollama_text_model.get()
+                ollama_vision_model = self.ollama_vision_model.get()
                 self._log(f"Ollama服务器: {ollama_url}")
+                self._log(f"文本模型: {ollama_text_model}")
+                self._log(f"图片模型: {ollama_vision_model}")
+            else:
+                self._log(f"模型: {model}")
             
             # 多线程设置
             use_multithread = self.enable_multithread.get()
@@ -455,6 +537,8 @@ class InvoiceGUI:
                 classify_files=True,
                 max_workers=thread_count if use_multithread else 1,
                 ollama_base_url=ollama_url,
+                ollama_text_model=ollama_text_model,
+                ollama_vision_model=ollama_vision_model,
                 batch_size=batch_size,
                 resume=resume,
                 file_lock_callback=on_file_locked
